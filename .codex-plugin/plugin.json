@@ -1,0 +1,20 @@
+{
+  "name": "requirements-governor",
+  "version": "0.1.0+codex.20260902123119",
+  "description": "Clarifies high-impact ambiguity and generates project-specific Markdown technical\u65b9\u6848 documents with suggested Git branch names for Shirley CRM requirements.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Requirements Governor",
+    "shortDescription": "Create logic-first Shirley technical plans with tables and exact code locations.",
+    "longDescription": "Requirements Governor is an explicit-only Shirley CRM technical-plan skill. When invoked, it explains current business logic, affected projects, involved tables and fields, detailed modification logic, exact frontend and backend code locations, UI behavior, compatibility impact, and full-flow backend unit-test design before implementation approval.",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": [
+      "requirements-tech-plan"
+    ],
+    "defaultPrompt": "Analyze this Shirley CRM requirement and create a dated docs technical\u65b9\u6848 covering current logic, affected tables, detailed modification logic, exact code locations, UI behavior, compatibility, and full-flow backend unit tests."
+  }
+}

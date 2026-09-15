@@ -1,0 +1,6 @@
+interface:
+  display_name: "Requirements Tech Plan"
+  short_description: "Create logic-first Shirley technical plans with tables and exact code locations."
+  default_prompt: "Analyze this Shirley CRM requirement and create a dated docs technical方案 covering current logic, affected tables, detailed modification logic, exact code locations, UI behavior, compatibility, and full-flow backend unit tests."
+policy:
+  allow_implicit_invocation: false
