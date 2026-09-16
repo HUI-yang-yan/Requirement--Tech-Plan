@@ -24,7 +24,6 @@ STATES = (
     "COMPLETED",
 )
 APPROVAL_WORDS = ("可以修改", "开始修改", "按文档修改", "开始实现", "动代码", "帮我改")
-SOURCE_ROOTS = ("shirley-admin", "shirley-web", "shirley-job")
 
 
 def sessions_root() -> Path:
@@ -60,8 +59,8 @@ def write_state(state: dict[str, object], path: Path) -> None:
 
 
 def is_source_path(value: str) -> bool:
-    normalized = value.replace("\\", "/").lstrip("./")
-    return any(normalized == root or normalized.startswith(root + "/") for root in SOURCE_ROOTS)
+    # All in-project files need approval, including root configuration and tests.
+    return bool(value.strip())
 
 
 def cmd_start(args: argparse.Namespace) -> dict[str, object]:
@@ -145,7 +144,10 @@ def cmd_approve(args: argparse.Namespace) -> dict[str, object]:
 def cmd_check_write(args: argparse.Namespace) -> dict[str, object]:
     root = Path(args.root).resolve()
     state, path = read_state(args.session_id, root)
-    relative = Path(args.file).resolve().relative_to(root).as_posix()
+    candidate = Path(args.file)
+    if not candidate.is_absolute():
+        candidate = root / candidate
+    relative = candidate.resolve().relative_to(root).as_posix()
     source = is_source_path(relative)
     allowed = not source or state["status"] in {"APPROVED", "IMPLEMENTING", "TEST_GENERATED", "COMPLETED"}
     next_status = "IMPLEMENTING" if allowed and source and state["status"] == "APPROVED" else state["status"]

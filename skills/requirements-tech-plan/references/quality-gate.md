@@ -4,9 +4,9 @@ Use this before responding after Phase 1 or finishing Phase 2.
 
 ## Skill Priority
 
-When `requirements-tech-plan` is explicitly invoked for Shirley CRM, it owns Phase 1. Do not run the generic `superpowers:brainstorming` design-doc workflow before the Shirley technical方案. The required design artifact is an external-output `<yyyy-mm-dd>-<准确需求名>技术方案.md`.
+When `requirements-tech-plan` is explicitly invoked, use its Phase 1 workflow unless a higher-priority instruction or the user's current request says otherwise. The required design artifact is an external-output `<yyyy-mm-dd>-<准确需求名>技术方案.md`.
 
-If `superpowers:test-driven-development` or another generic testing workflow conflicts with this Shirley workflow, prefer `requirements-tech-plan`. The conflict resolution is narrow: generate valuable backend test code in Phase 2, but do not require a red/green test execution loop unless the user explicitly asks for it.
+Do not create a second generic design document for the same requirement. Keep implementation and testing in Phase 2 and follow explicit project/user testing rules.
 
 ## Phase 1 Red Lines
 
@@ -14,7 +14,7 @@ Phase 1 may only:
 
 - search files
 - read code
-- inspect routes, APIs, controller methods, biz/service/domain/api classes, mapper logic, frontend components, existing docs
+- inspect the project's actual routes, APIs, commands, handlers, services, domain code, persistence, clients, UI components, tests, and existing docs
 - create or update the requirement technical方案 Markdown in an external output directory outside the project root
 
 Phase 1 must not:
@@ -57,19 +57,19 @@ Before final response, verify:
 - Non-blocking ambiguity is recorded as assumptions in `需求范围`.
 - The document uses all ten required numbered sections from `assets/technical-plan-template.md`.
 - `需求范围` says what is in scope and out of scope.
-- `现有业务逻辑` explains the live entry, call chain, data read/write, status transition, and current problem.
+- `现有业务逻辑` explains the live entry, actual call chain, data read/write when applicable, state transition, and current problem.
 - `涉及项目与模块` identifies which inspected projects/modules change and why.
-- `涉及表、字段与数据关系` lists queried or modified tables, fields, relation keys, data impact, schema impact, and historical-data handling, or explicitly proves that no table is involved.
+- `涉及数据存储、字段与关系` lists queried or modified tables/collections/files/cache/external data, fields, relation keys, data impact, schema impact, and historical-data handling, or explains why no persistent data is involved.
 - `详细修改逻辑` is organized by business module and includes current logic, changed logic, ordered steps, direct boundaries, and minimum-change justification.
-- `接口与后端代码修改点` includes concrete files/classes/methods and exact line numbers for every planned change.
-- `前端修改点` includes concrete files/components/API calls and exact line numbers for every planned change, or explains why none are needed.
+- `接口与核心代码修改点` includes concrete files/types/functions and exact line numbers for every planned change.
+- `页面、客户端与调用方修改点` includes concrete files/components/calls and exact line numbers for every planned change, or explains why none are needed.
 - Every planned modification uses `path:line`; class names or method names alone are insufficient.
 - Every cached candidate cited in the document was re-opened and verified against current source.
 - Sparse evidence, missing layers, or a broken call chain triggered a broader `rg` search before completing the document.
 - `修改前后页面与交互` includes before and after behavior.
 - `历史数据、兼容性与影响范围` explicitly covers cleanup, old records, old callers, and affected downstream paths.
-- `测试单元与回归点` includes backend and frontend/regression checks as applicable.
-- The backend test plan names a test file/class and requires an obvious console trace for input, entry, important calls, before/after data or status, exception/boundary result, and final assertion result.
+- `测试与回归点` covers the affected runtime and callers as applicable.
+- For backend/service changes, the test plan names a test file/class and requires an obvious console trace for input, entry, important calls, before/after data or status, exception/boundary result, and final assertion result.
 - No template placeholder such as `<...>` remains in the generated document.
 - No source implementation files were changed in Phase 1.
 - No SQL other than read-only query SQL was executed; normally SQL is only inspected or generated as a file.
@@ -93,21 +93,21 @@ Every planned or implemented change must be necessary for the current requiremen
 
 - Do not force a frontend section to propose changes when the backend alone completes the requirement.
 - Do not propose new tables or fields unless existing fields cannot satisfy the requirement.
-- Do not only hide/disable frontend controls when backend validation is needed.
+- Do not only hide/disable client controls when server-side validation is needed.
 - Keep long serialized fields short: name the keys, source object, and usage; avoid oversized dumps.
 - It is acceptable to propose a small helper/private method when repeated status checks, ownership checks, or cancellation logic would otherwise be scattered.
 - Prefer "minimum sufficient behavior" over broad refactors.
 
 ## Phase 2 Testing Rule
 
-After source code changes:
+After source code changes, apply the items that match the actual project:
 
 - Do not require frontend validation/build/lint unless the user explicitly asks.
 - Do not compile the backend for verification.
-- Generate backend unit tests.
+- Generate backend/service unit tests when backend/service behavior changes.
 - Do not create tests merely to pass mocks.
 - Backend tests must cover the business chain: entry parameters -> core biz/service collaboration -> status/data change -> key exception or boundary behavior.
-- Prefer controller/biz/service collaboration tests when practical.
+- Prefer the project's real entry/core/persistence collaboration path when practical.
 - If full Spring/database startup is unavailable, assemble the business chain with focused mocks and clear assertions.
 - Do not run backend tests unless the user explicitly asks; generate the test code only.
 - Make each generated test print a clear full-flow trace to the console: scenario/input -> entry -> important biz/service calls -> before/after data or status -> exception/boundary -> assertion result.

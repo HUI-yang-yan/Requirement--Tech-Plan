@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Suggest a Shirley technical-plan file name and Git branch name."""
+"""Suggest a technical-plan file name and Git branch name."""
 
 from __future__ import annotations
 
@@ -11,7 +11,26 @@ from pathlib import PurePosixPath
 
 
 KEYWORDS = [
-    ("退费", "refund"),
+    ("用户", "user"),
+    ("账号", "account"),
+    ("账户", "account"),
+    ("登录", "login"),
+    ("认证", "auth"),
+    ("订单", "order"),
+    ("支付", "payment"),
+    ("优惠券", "coupon"),
+    ("核销", "redeem"),
+    ("通知", "notification"),
+    ("消息", "message"),
+    ("报表", "report"),
+    ("命令行", "cli"),
+    ("配置", "config"),
+    ("导入", "import"),
+    ("导出", "export"),
+    ("新增", "create"),
+    ("创建", "create"),
+    ("更新", "update"),
+    ("修改", "update"),
     ("退款", "refund"),
     ("申诉", "appeal"),
     ("审批", "approval"),
@@ -20,25 +39,20 @@ KEYWORDS = [
     ("拒绝", "reject"),
     ("驳回", "reject"),
     ("归属人", "owner"),
-    ("大课", "large-class"),
     ("APP", "app"),
-    ("开课", "started"),
-    ("学员", "student"),
     ("删除", "delete"),
     ("权限", "permission"),
     ("库存", "stock"),
-    ("赠品", "gift"),
-    ("班级", "class"),
-    ("班主任", "teacher"),
-    ("销售", "sales"),
     ("页面", "page"),
     ("列表", "list"),
     ("详情", "detail"),
     ("状态", "status"),
     ("同步", "sync"),
+    ("锁定", "lock"),
+    ("冻结", "lock"),
 ]
 
-BUG_WORDS = ("bug", "fix", "修复", "缺陷", "问题", "报错", "异常", "不生效", "失败")
+BUG_WORDS = ("bug", "fix", "修复", "缺陷", "故障", "报错", "不生效", "无法", "崩溃")
 
 
 def clean_title(text: str) -> str:
@@ -78,14 +92,28 @@ def english_slug(text: str) -> str:
     return slug[:48].strip("-") or "requirement"
 
 
-def suggest(text: str, date: str | None, kind: str | None, docs_dir: str) -> dict[str, str]:
+def normalize_slug(value: str) -> str:
+    slug = re.sub(r"[^a-z0-9-]+", "-", value.strip().lower())
+    slug = re.sub(r"-{2,}", "-", slug).strip("-")
+    if not slug:
+        raise ValueError("slug must contain at least one ASCII letter or digit")
+    return slug[:48].strip("-")
+
+
+def suggest(
+    text: str,
+    date: str | None,
+    kind: str | None,
+    docs_dir: str,
+    slug: str | None = None,
+) -> dict[str, str]:
     day = dt.date.fromisoformat(date) if date else dt.date.today()
     title = clean_title(text)
     branch_kind = infer_kind(text, kind)
-    slug = english_slug(text)
+    branch_slug = normalize_slug(slug) if slug else english_slug(text)
     doc_name = f"{day.isoformat()}-{title}技术方案.md"
     doc_file = str(PurePosixPath(docs_dir) / doc_name)
-    branch = f"{branch_kind}/{day:%Y%m%d}-{slug}"
+    branch = f"{branch_kind}/{day:%Y%m%d}-{branch_slug}"
     return {"doc_file": doc_file, "branch": branch}
 
 
@@ -95,11 +123,16 @@ def main() -> None:
     parser.add_argument("--title", help="Requirement title or summary.")
     parser.add_argument("--date", help="Date in yyyy-mm-dd. Defaults to today.")
     parser.add_argument("--kind", choices=["feature", "fix"], help="Branch prefix override.")
+    parser.add_argument("--slug", help="Manual English branch slug override for project-specific terms.")
     parser.add_argument("--docs-dir", default="docs", help="Docs directory prefix.")
     args = parser.parse_args()
 
     text = args.title or " ".join(args.text)
-    print(json.dumps(suggest(text, args.date, args.kind, args.docs_dir), ensure_ascii=False, indent=2))
+    try:
+        result = suggest(text, args.date, args.kind, args.docs_dir, args.slug)
+    except ValueError as error:
+        parser.error(str(error))
+    print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

@@ -19,8 +19,8 @@ State the business problem, observable goal, included behavior, excluded behavio
 Explain the current behavior before proposing changes:
 
 - user/page or scheduled-task entry
-- frontend request when present
-- Controller -> Biz -> Service -> Mapper/domain call chain
+- caller request, command, event, or scheduled invocation when present
+- the project's actual route/command/event -> core logic -> persistence/integration call chain
 - data read/write and current status transitions
 - existing error or missing behavior that creates the requirement
 
@@ -32,25 +32,25 @@ Use a table with `项目`, `模块/职责`, `是否修改`, `修改原因`. Incl
 
 Do not invent a project merely to make the table look complete.
 
-## 4. 涉及表、字段与数据关系
+## 4. 涉及数据存储、字段与关系
 
 Use a table with:
 
-- table name and business purpose
+- table/collection/file/cache/external source name and business purpose
 - current relevant fields
 - relation key to other tables
 - read/write/update effect
 - whether schema or historical data changes are required
 
-List tables that are queried even when no schema change is required. Distinguish clearly among `只查询`, `更新数据`, `新增字段`, and `无表结构变化`.
+List persistent or external data that is queried even when no schema change is required. Distinguish clearly among `只查询`, `更新数据`, `新增字段`, and `无结构变化`.
 
-For each field, identify its PO/DTO/VO source where possible. Do not paste large serialized JSON; list only relevant keys. If no database table is involved, explicitly state why.
+For each field, identify its model/schema/DTO source where possible. Do not paste large serialized JSON; list only relevant keys. If no persistent data is involved, explicitly state why.
 
 Do not propose new tables or fields unless current storage cannot satisfy the requirement and the need is proved from code.
 
 ## 5. 详细修改逻辑
 
-Organize this section by business module, similar to `人群SOP管理`, `成员同步`, or `标签查询`, rather than by a generic frontend/backend split.
+Organize this section by the requirement's real business module or processing stage rather than by a generic frontend/backend split.
 
 Each module must include:
 
@@ -62,24 +62,24 @@ Each module must include:
 
 Use short pseudocode when a condition or state transition would otherwise be ambiguous. Do not include unrelated optimization ideas.
 
-## 6. 接口与后端代码修改点
+## 6. 接口与核心代码修改点
 
-For every backend modification, include:
+For every core implementation modification, include:
 
 - API path and HTTP method when applicable
 - request/response fields
-- Controller/Biz/Service/Mapper/domain class and method
+- actual route/controller/handler/command/core/service/repository/model type and function, as applicable
 - exact insertion or replacement logic
 - table and status values involved
 - exact `path:line` for every planned source change
 
 If adding a private helper, state its file, insertion line, name, inputs, outputs, and single responsibility. Explain which layers do not need changes and why.
 
-## 7. 前端修改点
+## 7. 页面、客户端与调用方修改点
 
-For every frontend modification, include exact `path:line`, page/component, button/form/dialog/table/filter, API function, request/response field, and interaction behavior.
+For every UI, client, SDK, CLI, or caller modification, include exact `path:line`, component/command/call, request/response field, and interaction behavior.
 
-If no frontend change is needed, keep the section and explain how the current UI receives the backend result.
+If no caller-facing change is needed, keep the section and explain how existing callers receive the new result or why this section is not applicable.
 
 ## 8. 修改前后页面与交互
 
@@ -99,13 +99,13 @@ State explicitly:
 
 Write `无需历史数据处理` with code/data justification when no cleanup is needed.
 
-## 10. 测试单元与回归点
+## 10. 测试与回归点
 
-Separate backend unit tests and frontend regression checks.
+Separate automated tests and caller/user regression checks according to the actual project.
 
-For each backend test, include input/precondition -> entry method -> important biz/service collaboration -> data/status change -> exception/boundary -> expected assertion. Name the test class/file to create or update.
+For each backend/service test, include input/precondition -> entry method -> important collaborations -> data/status change -> exception/boundary -> expected assertion. Name the test class/file to create or update.
 
-Generated backend tests must print an obvious full-flow trace to the console. The trace should identify:
+When backend/service test code is generated, it must print an obvious full-flow trace to the console. The trace should identify:
 
 - test scenario and input
 - entry method
@@ -116,7 +116,7 @@ Generated backend tests must print an obvious full-flow trace to the console. Th
 
 Do not require backend compilation or test execution by default. Generate the test code only unless the user explicitly requests execution. Do not stage or commit generated tests unless explicitly requested.
 
-Frontend checks must describe user operations and expected results. Do not require frontend build/lint unless explicitly requested.
+UI/client/CLI checks must describe user operations or invocations and expected results. Do not require frontend build/lint unless explicitly requested.
 
 ## Traceability Rules
 

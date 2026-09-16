@@ -52,6 +52,7 @@ def main() -> None:
     parser.add_argument("--output-dir")
     parser.add_argument("--date")
     parser.add_argument("--kind", choices=["feature", "fix"])
+    parser.add_argument("--slug", help="Manual English branch slug override.")
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
 
@@ -63,7 +64,7 @@ def main() -> None:
         raise SystemExit(f"content file does not exist: {content_file}")
     day = args.date or dt.date.today().isoformat()
     helper = load_name_helper()
-    names = helper.suggest(args.requirement, day, args.kind, "")
+    names = helper.suggest(args.requirement, day, args.kind, "", args.slug)
     title = helper.clean_title(args.requirement)
     branch = names["branch"]
     output_dir = Path(args.output_dir).resolve() if args.output_dir else default_output_dir(root)

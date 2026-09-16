@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Suggest concise clarification questions for Shirley CRM requirements.
+"""Suggest concise clarification questions for software requirements.
 
 This script is intentionally heuristic. It helps the agent notice high-impact
 ambiguity, then the agent should refine the final wording with project context.
@@ -36,7 +36,7 @@ RULES = [
     ),
     Rule(
         name="state-source",
-        patterns=("已开课", "状态", "完成", "通过", "拒绝", "生效", "失效", "结束", "进行中"),
+        patterns=("状态", "完成", "通过", "拒绝", "生效", "失效", "结束", "进行中"),
         resolved_patterns=("被拒绝时", "拒绝时", "通过时", "完成时"),
         question="这个状态以哪个字段/时间为准：业务发生时间、审批状态，还是页面展示状态？",
         recommendation="建议优先使用后端稳定字段或已有状态枚举，避免依赖前端展示文案。",
@@ -63,10 +63,10 @@ RULES = [
     ),
     Rule(
         name="ownership",
-        patterns=("归属", "责任人", "负责人", "班主任", "销售", "人员", "归因"),
+        patterns=("归属", "责任人", "负责人", "所有者", "人员", "归因", "owner", "assignee"),
         resolved_patterns=(),
-        question="归属结果以后端保存的审批/业务记录为准，还是每次按当前班级/人员实时计算？",
-        recommendation="建议保存当次业务选择结果，避免人员或班级变化导致历史漂移。",
+        question="归属结果以当次保存的业务快照为准，还是每次按当前组织关系实时计算？",
+        recommendation="建议保存当次业务选择结果，避免组织或人员变化导致历史漂移。",
         assumption="归属类结果保存当次选择或当次业务快照，不以后续实时关系覆盖历史。",
         impact="决定是否写入审批内容、业务表字段或仅展示计算结果。",
     ),
