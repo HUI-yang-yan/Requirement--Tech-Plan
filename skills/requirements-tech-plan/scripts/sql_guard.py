@@ -22,15 +22,51 @@ def strip_comments(sql: str) -> str:
 
 
 def split_statements(sql: str) -> list[str]:
-    return [part.strip() for part in strip_comments(sql).split(";") if part.strip()]
+    sql = strip_comments(sql)
+    statements: list[str] = []
+    current: list[str] = []
+    quote: str | None = None
+    index = 0
+    while index < len(sql):
+        char = sql[index]
+        if quote:
+            current.append(char)
+            if char == quote:
+                if index + 1 < len(sql) and sql[index + 1] == quote:
+                    current.append(sql[index + 1])
+                    index += 1
+                else:
+                    quote = None
+        elif char in {"'", '"', "`"}:
+            quote = char
+            current.append(char)
+        elif char == ";":
+            statement = "".join(current).strip()
+            if statement:
+                statements.append(statement)
+            current = []
+        else:
+            current.append(char)
+        index += 1
+    statement = "".join(current).strip()
+    if statement:
+        statements.append(statement)
+    return statements
+
+
+def mask_quoted_values(sql: str) -> str:
+    return re.sub(r"'(?:''|[^'])*'|\"(?:\"\"|[^\"])*\"|`(?:``|[^`])*`", "''", sql)
 
 
 def inspect(sql: str) -> dict[str, object]:
     violations: list[dict[str, object]] = []
     statements = split_statements(sql)
+    if not statements:
+        violations.append({"statement": 0, "preview": "", "reason": "SQL must contain at least one read-only query"})
     for index, statement in enumerate(statements, start=1):
         normalized = re.sub(r"\s+", " ", statement).strip()
-        if not READ_START.match(normalized) or MUTATING.search(normalized) or READ_FORBIDDEN.search(normalized):
+        inspected = mask_quoted_values(normalized)
+        if not READ_START.match(inspected) or MUTATING.search(inspected) or READ_FORBIDDEN.search(inspected):
             violations.append({"statement": index, "preview": normalized[:240], "reason": "only read-only query SQL is allowed"})
     return {"allowed": not violations, "statement_count": len(statements), "violations": violations, "executed": False}
 

@@ -36,6 +36,54 @@ class WorkflowGuardsTest(unittest.TestCase):
             check=check,
         )
 
+    def write_valid_plan(self, title, location):
+        plan = self.output_dir / f"2026-09-02-{title}技术方案.md"
+        plan.parent.mkdir(exist_ok=True)
+        plan.write_text(
+            f"""【需求分析模式：最小改动技术文档】
+# {title}技术方案
+
+## 建议 Git 分支名称
+
+feature/20260902-account-lock
+
+## 1. 需求目标与范围
+只修改账号锁定逻辑，不新增页面或数据库。
+## 2. 现有业务逻辑
+当前入口调用账号服务，缺少目标限制。
+## 3. 涉及项目与模块
+| 项目 | 模块/职责 | 是否修改 | 修改原因 |
+|---|---|---|---|
+| identity | account service | 是 | 增加目标限制 |
+## 4. 涉及数据存储、字段与关系
+| 数据源/表/集合 | 业务用途 | 当前相关字段 | 关联关系 | 本次数据影响 | 结构/历史数据 |
+|---|---|---|---|---|---|
+| 不涉及 | 内存状态 | locked | account | 更新数据 | 无结构变化 |
+## 5. 详细修改逻辑
+当前逻辑：入口直接调用服务。
+修改后逻辑：服务执行锁定规则。
+修改步骤：入口调用服务并返回结果。
+异常与边界：重复锁定保持幂等。
+最小改动说明：只修改现有服务。
+## 6. 接口与核心代码修改点
+`{location}:1` 修改现有账号服务。
+## 7. 页面、客户端与调用方修改点
+不涉及页面，调用参数不变。
+## 8. 修改前后页面与交互
+修改前：账号保持原状态。
+修改后：命中规则后账号锁定。
+## 9. 历史数据、兼容性与影响范围
+无需历史数据处理，现有调用兼容。
+## 10. 测试与回归点
+输入/前置条件：给定未锁定账号。
+操作链路：入口到账号服务。
+预期结果：账号被锁定。
+控制台输出：输入、入口、状态变化和断言结果。
+""",
+            encoding="utf-8",
+        )
+        return plan
+
     def test_session_blocks_source_until_validated_plan_and_explicit_approval(self):
         start = self.run_script("requirement_session.py", "start", "--root", str(self.root), "--requirement", "新增账号锁定规则")
         self.assertEqual(0, start.returncode)
@@ -48,18 +96,55 @@ class WorkflowGuardsTest(unittest.TestCase):
         blocked = self.run_script("requirement_session.py", "check-write", "--root", str(self.root), "--session-id", session_id, "--file", str(source))
         self.assertNotEqual(0, blocked.returncode)
 
-        plan = self.output_dir / "2026-09-02-新增账号锁定规则技术方案.md"
-        plan.parent.mkdir()
-        plan.write_text("plan", encoding="utf-8")
+        plan = self.write_valid_plan("新增账号锁定规则", "identity/src/account_service.py")
         self.assertEqual(0, self.run_script("requirement_session.py", "plan-created", "--root", str(self.root), "--session-id", session_id, "--plan-file", str(plan)).returncode)
         self.assertEqual(0, self.run_script("requirement_session.py", "validate-plan", "--root", str(self.root), "--session-id", session_id).returncode)
 
         still_blocked = self.run_script("requirement_session.py", "check-write", "--root", str(self.root), "--session-id", session_id, "--file", str(source))
         self.assertNotEqual(0, still_blocked.returncode)
+        negated = self.run_script("requirement_session.py", "approve", "--root", str(self.root), "--session-id", session_id, "--text", "现在不可以修改")
+        self.assertNotEqual(0, negated.returncode)
+
+        plan.write_text(plan.read_text(encoding="utf-8") + "\n补充说明。\n", encoding="utf-8")
+        changed = self.run_script("requirement_session.py", "approve", "--root", str(self.root), "--session-id", session_id, "--text", "按文档修改")
+        self.assertNotEqual(0, changed.returncode)
+        self.assertEqual(0, self.run_script("requirement_session.py", "plan-created", "--root", str(self.root), "--session-id", session_id, "--plan-file", str(plan)).returncode)
+        self.assertEqual(0, self.run_script("requirement_session.py", "validate-plan", "--root", str(self.root), "--session-id", session_id).returncode)
         self.assertEqual(0, self.run_script("requirement_session.py", "approve", "--root", str(self.root), "--session-id", session_id, "--text", "按文档修改").returncode)
         allowed = self.run_script("requirement_session.py", "check-write", "--root", str(self.root), "--session-id", session_id, "--file", str(source))
         self.assertEqual(0, allowed.returncode)
         self.assertEqual("IMPLEMENTING", json.loads(allowed.stdout)["status"])
+        completed = self.run_script("requirement_session.py", "complete", "--root", str(self.root), "--session-id", session_id)
+        self.assertEqual(0, completed.returncode)
+        self.assertEqual("COMPLETED", json.loads(completed.stdout)["status"])
+        after_completion = self.run_script("requirement_session.py", "check-write", "--root", str(self.root), "--session-id", session_id, "--file", str(source))
+        self.assertNotEqual(0, after_completion.returncode)
+
+    def test_session_rejects_invalid_plan_and_unsafe_session_id(self):
+        unsafe = self.run_script(
+            "requirement_session.py",
+            "start",
+            "--root",
+            str(self.root),
+            "--requirement",
+            "新增账号锁定规则",
+            "--session-id",
+            "../escape",
+        )
+        self.assertNotEqual(0, unsafe.returncode)
+
+        start = self.run_script("requirement_session.py", "start", "--root", str(self.root), "--requirement", "新增账号锁定规则")
+        session_id = json.loads(start.stdout)["session_id"]
+        plan = self.output_dir / "2026-09-02-无效方案技术方案.md"
+        plan.parent.mkdir(exist_ok=True)
+        plan.write_text("plan", encoding="utf-8")
+        recorded = self.run_script("requirement_session.py", "plan-created", "--root", str(self.root), "--session-id", session_id, "--plan-file", str(plan))
+        self.assertEqual(0, recorded.returncode)
+
+        validated = self.run_script("requirement_session.py", "validate-plan", "--root", str(self.root), "--session-id", session_id)
+
+        self.assertNotEqual(0, validated.returncode)
+        self.assertIn("plan validation failed", validated.stderr)
 
     def test_generate_plan_writes_outside_root_and_sql_guard_is_read_only(self):
         content = self.root.parent / "content.md"
@@ -74,6 +159,10 @@ class WorkflowGuardsTest(unittest.TestCase):
         allowed = self.run_script("sql_guard.py", "--sql", "SELECT id FROM refund_rec")
         self.assertEqual(0, allowed.returncode)
         self.assertEqual("false", json.loads(allowed.stdout)["executed"].__str__().lower())
+        literal = self.run_script("sql_guard.py", "--sql", "SELECT 'update status' AS message")
+        self.assertEqual(0, literal.returncode)
+        empty = self.run_script("sql_guard.py", "--sql", "  -- no query")
+        self.assertNotEqual(0, empty.returncode)
         rejected = self.run_script("sql_guard.py", "--sql", "UPDATE refund_rec SET status = 1")
         self.assertNotEqual(0, rejected.returncode)
 

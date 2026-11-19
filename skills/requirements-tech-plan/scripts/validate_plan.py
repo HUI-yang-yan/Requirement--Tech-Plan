@@ -23,6 +23,7 @@ SECTIONS = (
     "## 10. 测试与回归点",
 )
 LOCATION_RE = re.compile(r"`(?P<path>(?:[A-Za-z]:[\\/])?[^`\n<>]+):(?P<line>[1-9][0-9]*)`")
+PLAN_FILE_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}-.+技术方案\.md$")
 
 
 def template_placeholders() -> set[str]:
@@ -33,9 +34,11 @@ def template_placeholders() -> set[str]:
 def check_location(match: re.Match[str], root: Path) -> str | None:
     raw_path = match.group("path").strip().strip("` ")
     line = int(match.group("line"))
-    candidate = Path(raw_path)
+    # Plans use portable forward-slash paths, even when generated on Windows.
+    normalized_path = raw_path.replace("\\", "/")
+    candidate = Path(normalized_path)
     if not candidate.is_absolute():
-        candidate = root / raw_path.replace("/", "\\")
+        candidate = root / candidate
     if not candidate.is_file():
         return f"location file does not exist: {raw_path}:{line}"
     count = len(candidate.read_text(encoding="utf-8", errors="replace").splitlines())
@@ -47,10 +50,17 @@ def check_location(match: re.Match[str], root: Path) -> str | None:
 def validate(plan: Path, root: Path | None) -> dict[str, object]:
     text = plan.read_text(encoding="utf-8")
     errors: list[str] = []
+    if not PLAN_FILE_RE.fullmatch(plan.name):
+        errors.append("plan filename must be yyyy-mm-dd-<accurate-name>技术方案.md")
     if not text.startswith("【需求分析模式：最小改动技术文档】"):
         errors.append("missing required opening marker")
     missing = [section for section in SECTIONS if section not in text]
     errors.extend(f"missing section: {section}" for section in missing)
+    present_positions = [text.find(section) for section in SECTIONS if section in text]
+    if present_positions != sorted(present_positions):
+        errors.append("numbered sections are out of order")
+    duplicated = [section for section in SECTIONS if text.count(section) > 1]
+    errors.extend(f"duplicate section: {section}" for section in duplicated)
     unresolved = sorted(placeholder for placeholder in template_placeholders() if placeholder in text)
     if unresolved:
         errors.append("unresolved template placeholders remain: " + ", ".join(unresolved))

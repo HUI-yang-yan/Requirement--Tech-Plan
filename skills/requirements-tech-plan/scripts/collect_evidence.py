@@ -196,6 +196,20 @@ def file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def cached_evidence_is_current(root: Path, cached: dict[str, object]) -> bool:
+    for item in cached.get("evidence", []):
+        if not isinstance(item, dict):
+            return False
+        relative = item.get("path")
+        expected = item.get("file_sha256")
+        if not isinstance(relative, str) or not isinstance(expected, str):
+            return False
+        candidate = root / relative
+        if not candidate.is_file() or file_sha256(candidate) != expected:
+            return False
+    return True
+
+
 def classify_layer(relative_path: str) -> str:
     path = "/" + relative_path.replace("\\", "/").lower()
     parts = set(path.split("/"))
@@ -423,6 +437,7 @@ def collect(
         if (
             cached.get("cache_schema_version") == CACHE_SCHEMA_VERSION
             and cached.get("repository_fingerprint") == fingerprint
+            and cached_evidence_is_current(root, cached)
         ):
             cached["cache_hit"] = True
             return cached
@@ -456,7 +471,7 @@ def collect(
         "requires_deep_search": requires_deep_search,
         "recommended_next_steps": next_steps,
         "evidence": evidence,
-        "usage_note": "Heuristic candidates only, not a parsed call graph. Read current source around each location before citing it in a plan.",
+        "usage_note": "Heuristic candidates only, not learned project knowledge or a parsed call graph. Cache hits reduce repeated search but never replace reading current source before citing it.",
     }
     target_cache.parent.mkdir(parents=True, exist_ok=True)
     target_cache.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")

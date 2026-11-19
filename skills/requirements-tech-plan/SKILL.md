@@ -26,7 +26,7 @@ Discover actual languages, module roots, entry points and persistence from sourc
 5. Read current source around the candidates and confirm the live call chain and exact line numbers. If `requires_deep_search` is true, an expected project-specific component is absent, or the chain breaks, fall back to targeted full-repository `rg` searches.
 6. Generate document and branch names. Prefer `scripts/suggest_names.py` when title naming is not obvious. If project-specific Chinese terms produce a generic slug, supply an accurate `--slug <english-short-name>` rather than accepting `requirement`.
 7. Prepare substantive Markdown content from `assets/technical-plan-template.md`, then run `scripts/generate_plan.py` to write it outside the project root.
-8. Run `scripts/validate_plan.py --project-root <project-root>` and repair the document until it passes, then stop and ask whether to implement.
+8. Run `scripts/validate_plan.py <plan-file> --project-root <project-root>` and repair the document until it passes, then stop and ask whether to implement.
 
 Use the collector from the skill directory:
 
@@ -42,6 +42,8 @@ python scripts/collect_evidence.py --root <project-root> --search-root <module-a
 
 Do not cite a cached location without opening the current file around that location. Avoid reading large source files in full: locate with evidence or `rg -n`, then read only the smallest useful surrounding range.
 
+The evidence cache is only a search accelerator. It does not learn project semantics, prove a call chain, or authorize skipping current-source reads. A cache hit must still be verified against the live files.
+
 Generated artifacts must stay outside the project root. Use `generate_plan.py` for technical plans and keep SQL files beside the external document output. Before any SQL-related action, run `sql_guard.py`; only read-only query SQL is allowed and the script never executes SQL. Before configuring database access, run `db_mapping_guard.py`; if any interface has no database mapping, ask the user for the mapping and do not change code until it is supplied. When backend/service tests apply, prefer one test file per requirement; use `test_file_guard.py count` when more than one file is proposed, and use `check-staged` to keep generated tests out of Git staging.
 
 Available scripts:
@@ -49,7 +51,7 @@ Available scripts:
 - `clarify_requirement.py`: identify high-impact clarification candidates.
 - `collect_evidence.py`: cache-safe cross-layer code candidate search.
 - `suggest_names.py`: dated document and branch naming.
-- `requirement_session.py`: persist phase state and report whether a project-file write is allowed when explicitly called; it does not intercept writes or authenticate user approval.
+- `requirement_session.py`: optionally persist phase state, run the same plan validator before approval, and report whether a project-file write is allowed when explicitly called; it does not intercept writes or authenticate who supplied approval text.
 - `generate_plan.py`: write prepared Markdown outside the project root.
 - `validate_plan.py`: validate sections, tables, logic, console trace, path/line references, and output location.
 - `sql_guard.py`: allow only read-only query SQL; never execute SQL.

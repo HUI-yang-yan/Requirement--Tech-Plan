@@ -97,6 +97,20 @@ class CollectEvidenceTest(unittest.TestCase):
         ]
         self.assertEqual([3], service_lines)
 
+    def test_invalidates_cached_evidence_when_size_and_mtime_are_preserved(self):
+        first = self._run("登录失败后锁定账号")
+        self.assertFalse(first["cache_hit"])
+
+        path = self.root / "identity/src/services/account_service.py"
+        stat = path.stat()
+        content = path.read_text(encoding="utf-8")
+        path.write_text(content.replace("True", "None"), encoding="utf-8")
+        os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+
+        second = self._run("登录失败后锁定账号")
+
+        self.assertFalse(second["cache_hit"])
+
     def test_marks_sparse_results_for_deep_search(self):
         result = self._run("生成月度报表")
 
